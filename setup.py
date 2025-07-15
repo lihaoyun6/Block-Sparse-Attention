@@ -36,7 +36,7 @@ this_dir = os.path.dirname(os.path.abspath(__file__))
 PACKAGE_NAME = "block_sparse_attn"
 
 BASE_WHEEL_URL = (
-    "https://github.com/mit-han-lab/Block-Sparse-Attention/releases/download/{tag_name}/{wheel_name}"
+    "https://github.com/lihaoyun6/Block-Sparse-Attention/releases/download/{tag_name}/{wheel_name}"
 )
 
 # FORCE_BUILD: Force a fresh build locally, instead of attempting to find prebuilt wheels
@@ -116,20 +116,58 @@ if not SKIP_CUDA_BUILD:
                 "FlashAttention is only supported on CUDA 11.6 and above.  "
                 "Note: make sure nvcc has a supported version by running nvcc -V."
             )
-    # cc_flag.append("-gencode")
-    # cc_flag.append("arch=compute_75,code=sm_75")
+    #cc_flag.append("-gencode")
+    #cc_flag.append("arch=compute_75,code=sm_75")
     cc_flag.append("-gencode")
     cc_flag.append("arch=compute_80,code=sm_80")
+    cc_flag.append("-gencode")
+    cc_flag.append("arch=compute_86,code=sm_86")
+    cc_flag.append("-gencode")
+    cc_flag.append("arch=compute_89,code=sm_89")
     if CUDA_HOME is not None:
         if bare_metal_version >= Version("11.8"):
             cc_flag.append("-gencode")
             cc_flag.append("arch=compute_90,code=sm_90")
+        #if bare_metal_version >= Version("12.8"):
+        #    cc_flag.append("-gencode")
+        #    cc_flag.append("arch=compute_100,code=sm_100")
 
     # HACK: The compiler flag -D_GLIBCXX_USE_CXX11_ABI is set to be the same as
     # torch._C._GLIBCXX_USE_CXX11_ABI
     # https://github.com/pytorch/pytorch/blob/8472c24e3b5b60150096486616d98b7bea01500b/torch/utils/cpp_extension.py#L920
     if FORCE_CXX11_ABI:
         torch._C._GLIBCXX_USE_CXX11_ABI = True
+    
+    nvcc_flags = [
+        "-O3",
+        "-std=c++17",
+        "-U__CUDA_NO_HALF_OPERATORS__",
+        "-U__CUDA_NO_HALF_CONVERSIONS__",
+        "-U__CUDA_NO_HALF2_OPERATORS__",
+        "-U__CUDA_NO_BFLOAT16_CONVERSIONS__",
+        "--expt-relaxed-constexpr",
+        "--expt-extended-lambda",
+        "--use_fast_math",
+        # "--ptxas-options=-v",
+        # "--ptxas-options=-O2",
+        "-lineinfo",
+        # "-G",
+        # "-g",
+        "-Xcudafe",
+        "--diag_suppress=177",
+        "-Xcudafe",
+        "--diag_suppress=221",
+        "-Xfatbin",
+        "-compress-all",
+        "-compress-mode=size",
+    ]
+    
+    if get_platform() == "win_amd64" and os.getenv('DISTUTILS_USE_SDK') == '1':
+        nvcc_flags.extend(["-Xcompiler", "/Zc:__cplusplus"])
+        cxx_flags = ["/O2", "/std:c++17", "/Zc:__cplusplus"]
+    else:
+        cxx_flags = ["-O3", "-std=c++17"]
+        
     ext_modules.append(
         CUDAExtension(
             name="block_sparse_attn_cuda",
@@ -199,27 +237,8 @@ if not SKIP_CUDA_BUILD:
                 "csrc/block_sparse_attn/src/flash_bwd_block_hdim128_bf16_sm80.cu",
             ],
             extra_compile_args={
-                "cxx": ["-O3", "-std=c++17"] + generator_flag,
-                "nvcc": append_nvcc_threads(
-                    [
-                        "-O3",
-                        "-std=c++17",
-                        "-U__CUDA_NO_HALF_OPERATORS__",
-                        "-U__CUDA_NO_HALF_CONVERSIONS__",
-                        "-U__CUDA_NO_HALF2_OPERATORS__",
-                        "-U__CUDA_NO_BFLOAT16_CONVERSIONS__",
-                        "--expt-relaxed-constexpr",
-                        "--expt-extended-lambda",
-                        "--use_fast_math",
-                        # "--ptxas-options=-v",
-                        # "--ptxas-options=-O2",
-                        "-lineinfo",
-                        # "-G",
-                        # "-g",
-                    ]
-                    + generator_flag
-                    + cc_flag
-                ),
+                "cxx": cxx_flags + generator_flag,
+                "nvcc": append_nvcc_threads(nvcc_flags + generator_flag + cc_flag),
             },
             include_dirs=[
                 Path(this_dir) / "csrc" / "block_sparse_attn",
