@@ -120,17 +120,10 @@ if not SKIP_CUDA_BUILD:
     #cc_flag.append("arch=compute_75,code=sm_75")
     cc_flag.append("-gencode")
     cc_flag.append("arch=compute_80,code=sm_80")
-    cc_flag.append("-gencode")
-    cc_flag.append("arch=compute_86,code=sm_86")
-    cc_flag.append("-gencode")
-    cc_flag.append("arch=compute_89,code=sm_89")
     if CUDA_HOME is not None:
         if bare_metal_version >= Version("11.8"):
             cc_flag.append("-gencode")
             cc_flag.append("arch=compute_90,code=sm_90")
-        #if bare_metal_version >= Version("12.8"):
-        #    cc_flag.append("-gencode")
-        #    cc_flag.append("arch=compute_100,code=sm_100")
 
     # HACK: The compiler flag -D_GLIBCXX_USE_CXX11_ABI is set to be the same as
     # torch._C._GLIBCXX_USE_CXX11_ABI
@@ -268,7 +261,7 @@ def get_wheel_url():
     torch_version_raw = parse(torch.__version__)
     # For CUDA 11, we only compile for CUDA 11.8, and for CUDA 12 we only compile for CUDA 12.2
     # to save CI time. Minor versions should be compatible.
-    torch_cuda_version = parse("11.8") if torch_cuda_version.major == 11 else parse("12.2")
+    #torch_cuda_version = parse("11.8") if torch_cuda_version.major == 11 else parse("12.2")
     python_version = f"cp{sys.version_info.major}{sys.version_info.minor}"
     platform_name = get_platform()
     flash_version = get_package_version()
